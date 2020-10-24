@@ -9,7 +9,9 @@ def parameters():
     params.debug = 0
     params.visualization = False
 
-    params.use_gpu = True
+    params.use_gpu = False
+
+    params.net_path = '/home/vazgen'  
 
     # Feature specific parameters
     shallow_params = TrackerParams()

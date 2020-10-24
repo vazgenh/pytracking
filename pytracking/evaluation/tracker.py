@@ -14,7 +14,7 @@ from ltr.data.bounding_box_utils import masks_to_bboxes
 from pytracking.evaluation.multi_object_wrapper import MultiObjectWrapper
 from pathlib import Path
 import torch
-
+import json
 
 _tracker_disp_colors = {1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 0, 0),
                         4: (255, 255, 255), 5: (0, 0, 0), 6: (0, 255, 128),
@@ -67,7 +67,7 @@ class Tracker:
             self.tracker_class = None
 
         self.visdom = None
-
+        self.annotation_dir = None
 
     def _init_visdom(self, visdom_info, debug):
         visdom_info = {} if visdom_info is None else visdom_info
@@ -232,7 +232,6 @@ class Tracker:
         args:
             debug: Debug level.
         """
-
         params = self.get_parameters()
 
         debug_ = debug
@@ -282,7 +281,10 @@ class Tracker:
             output_boxes.append(optional_box)
         else:
             while True:
-                # cv.waitKey()
+                if cv.waitKey(1) != ord('s'):
+                    success, frame = cap.read()
+                    cv.imshow(display_name, frame)
+
                 frame_disp = frame.copy()
 
                 cv.putText(frame_disp, 'Select target ROI and press ENTER', (20, 30), cv.FONT_HERSHEY_COMPLEX_SMALL,
@@ -301,7 +303,7 @@ class Tracker:
                 break
 
             frame_disp = frame.copy()
-
+            
             # Draw box
             out = tracker.track(frame)
             state = [int(s) for s in out['target_bbox'][1]]
@@ -309,6 +311,8 @@ class Tracker:
 
             cv.rectangle(frame_disp, (state[0], state[1]), (state[2] + state[0], state[3] + state[1]),
                          (0, 255, 0), 5)
+
+            #print((state[0], state[1]), (state[2] + state[0], state[3] + state[1])) 
 
             font_color = (0, 0, 0)
             cv.putText(frame_disp, 'Tracking!', (20, 30), cv.FONT_HERSHEY_COMPLEX_SMALL, 1,
@@ -357,7 +361,7 @@ class Tracker:
         """
 
         params = self.get_parameters()
-
+        print (params.__dict__)
         debug_ = debug
         if debug is None:
             debug_ = getattr(params, 'debug', 0)
@@ -415,7 +419,8 @@ class Tracker:
         cv.namedWindow(display_name, cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO)
         cv.resizeWindow(display_name, 960, 720)
         cv.setMouseCallback(display_name, ui_control.mouse_callback)
-
+        
+        frame_id = 1
         next_object_id = 1
         sequence_object_ids = []
         prev_output = OrderedDict()
@@ -423,7 +428,7 @@ class Tracker:
             # Capture frame-by-frame
             ret, frame = cap.read()
             frame_disp = frame.copy()
-
+            frame_id += 1
             info = OrderedDict()
             info['previous_output'] = prev_output
 
@@ -454,7 +459,10 @@ class Tracker:
                         state = [int(s) for s in state]
                         cv.rectangle(frame_disp, (state[0], state[1]), (state[2] + state[0], state[3] + state[1]),
                                      _tracker_disp_colors[obj_id], 5)
-
+                        if self.annotation_dir:
+                            self.save_to_disk(self.annotation_dir+str(frame_id),frame_disp, ((state[0], state[1]), (state[2] + state[0], state[3] + state[1])))
+                        print( (state[0], state[1]), (state[2] + state[0], state[3] + state[1])) 
+                         
             # Put text
             font_color = (0, 0, 0)
             cv.putText(frame_disp, 'Select target', (20, 30), cv.FONT_HERSHEY_COMPLEX_SMALL, 1, font_color, 1)
@@ -484,6 +492,14 @@ class Tracker:
         # When everything done, release the capture
         cap.release()
         cv.destroyAllWindows()
+
+    def save_to_disk(self,file_path, frame, rect):
+        cv.imwrite(file_path + '.jpg', frame)
+        fj = open(file_path + 'json', 'w')
+        json.dump(rect,fj)
+        fj.close()
+
+
 
     def run_vot2020(self, debug=None, visdom_info=None):
         params = self.get_parameters()

@@ -9,7 +9,7 @@ if env_path not in sys.path:
 from pytracking.evaluation import Tracker
 
 
-def run_webcam(tracker_name, tracker_param, debug=None, visdom_info=None):
+def run_webcam(tracker_name, tracker_param, debug=None, visdom_info=None, annotation_dir=None):
     """Run the tracker on your webcam.
     args:
         tracker_name: Name of tracking method.
@@ -19,6 +19,7 @@ def run_webcam(tracker_name, tracker_param, debug=None, visdom_info=None):
     """
     visdom_info = {} if visdom_info is None else visdom_info
     tracker = Tracker(tracker_name, tracker_param)
+    tracker.annotation_dir = annotation_dir
     tracker.run_webcam(debug, visdom_info)
 
 
@@ -30,11 +31,11 @@ def main():
     parser.add_argument('--use_visdom', type=bool, default=True, help='Flag to enable visdom')
     parser.add_argument('--visdom_server', type=str, default='127.0.0.1', help='Server for visdom')
     parser.add_argument('--visdom_port', type=int, default=8097, help='Port for visdom')
-
+    parser.add_argument('annotation_dir', type=str, default='v1/', help='Annotation dir')
     args = parser.parse_args()
 
     visdom_info = {'use_visdom': args.use_visdom, 'server': args.visdom_server, 'port': args.visdom_port}
-    run_webcam(args.tracker_name, args.tracker_param, args.debug, visdom_info)
+    run_webcam(args.tracker_name, args.tracker_param, args.debug, visdom_info, args.annotation_dir)
 
 
 if __name__ == '__main__':
